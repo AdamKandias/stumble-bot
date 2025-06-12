@@ -26,7 +26,7 @@ BUTTON_TEMPLATES = {
     },
     "choose_event": {
         "image": "choose_event.png", 
-        "click_pos": (530, 436) 
+        "click_pos": (178, 436) 
     },
     "play_event": {
         "image": "play_event.png",
@@ -36,17 +36,21 @@ BUTTON_TEMPLATES = {
         "image": "play_event.png",
         "click_pos": (712, 700)
     },
-    "leave_game": {
+    "leave_game": { 
         "image": "leave_game.png",
-        "click_pos": (50 , 745)
+        "click_pos": (50 , 720)
     },
     "claim": {
         "image": "claim.png",
         "click_pos": (800, 650)
     },
-     "continue": {
+    "continue": {
         "image": "continue.png",
         "click_pos": (178, 694)
+    },
+    "skip": {
+        "image": "skip.png",
+        "click_pos": (100, 45)
     },
 }
 
@@ -175,7 +179,7 @@ def auto_game_control():
 
     while auto_control_active:
         pyautogui.press('space')
-        arrow = random.choice(['left', 'right', 'up', 'down'])
+        arrow = random.choice(['left', 'right', 'up', 'down', '1'])
         pyautogui.keyDown(arrow)
         time.sleep(0.2)
         pyautogui.keyUp(arrow)
@@ -196,7 +200,7 @@ def keyboard_listener():
 def main():
     global bot_paused
     global auto_control_active
-    print("🎮 Stumble Guys Bot")
+    print("🎮 Stumble Guys Bot") 
     print("="*40)
     
     # Tampilkan info konfigurasi
