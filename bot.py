@@ -26,11 +26,7 @@ BUTTON_TEMPLATES = {
     },
     "choose_event": {
         "image": "choose_event.png", 
-        "click_pos": (178, 436) 
-    },
-    "play_event": {
-        "image": "play_event.png",
-        "click_pos": (712, 700)
+        "click_pos": (532, 423) 
     },
     "play_event": {
         "image": "play_event.png",
@@ -52,8 +48,12 @@ BUTTON_TEMPLATES = {
         "image": "skip.png",
         "click_pos": (100, 45)
     },
+    "ok": {
+        "image": "ok.png",
+        "click_pos": (485, 710)
+    },
 }
-
+ 
 sct = mss()
 
 class ButtonDetector:
