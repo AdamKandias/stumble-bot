@@ -26,17 +26,17 @@ BUTTON_TEMPLATES = {
     },
     "choose_event": {
         "image": "choose_event.png", 
-        "click_pos": (532, 423) 
+        "click_pos": (232, 423) 
     },
     "play_event": {
         "image": "play_event.png",
-        "click_pos": (712, 700)
+        "click_pos": (652, 700)
     },
     "leave_game": { 
-        "image": "leave_game.png",
+        "image": "leave_game.png",  
         "click_pos": (50 , 720)
     },
-    "claim": {
+    "claim": { 
         "image": "claim.png",
         "click_pos": (800, 650)
     },
@@ -45,11 +45,15 @@ BUTTON_TEMPLATES = {
         "click_pos": (178, 694)
     },
     "skip": {
-        "image": "skip.png",
+        "image": "skip.png", 
         "click_pos": (100, 45)
     },
     "ok": {
         "image": "ok.png",
+        "click_pos": (485, 710)
+    },
+    "ok2": {
+        "image": "ok2.png",
         "click_pos": (485, 710)
     },
 }
