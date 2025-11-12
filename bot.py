@@ -238,23 +238,40 @@ def main():
                 frame = get_game_frame()
                 buttons = detector.detect_buttons(frame)
                 
+                # Prioritaskan ok2 jika terdeteksi
+                ok2_button = None
+                other_buttons = []
+                
                 for btn in buttons:
-                    print(f"🎯 Detected {btn['name']} (Confidence: {btn['confidence']:.2f})")
-                    click_in_game(*btn['click_pos'])
+                    if btn['name'] == 'ok2':
+                        ok2_button = btn
+                    else:
+                        other_buttons.append(btn)
+                
+                # Klik ok2 terlebih dahulu jika ada
+                if ok2_button:
+                    print(f"🎯 Detected {ok2_button['name']} (Confidence: {ok2_button['confidence']:.2f}) - PRIORITAS")
+                    click_in_game(*ok2_button['click_pos'])
+                    time.sleep(0.5)  # Beri waktu untuk modal tertutup
+                else:
+                    # Jika tidak ada ok2, klik tombol lain seperti biasa
+                    for btn in other_buttons:
+                        print(f"🎯 Detected {btn['name']} (Confidence: {btn['confidence']:.2f})")
+                        click_in_game(*btn['click_pos'])
 
-                    if btn['name'] == 'play_event':
-                        if not auto_control_active:
-                            auto_control_active = True
-                            auto_control_thread = threading.Thread(target=auto_game_control)
-                            auto_control_thread.start()
-                            print("▶️ Mulai kontrol otomatis...")
+                        if btn['name'] == 'play_event':
+                            if not auto_control_active:
+                                auto_control_active = True
+                                auto_control_thread = threading.Thread(target=auto_game_control)
+                                auto_control_thread.start()
+                                print("▶️ Mulai kontrol otomatis...")
 
-                    if btn['name'] == 'leave_game' or btn['name'] == 'claim' or btn['name'] == 'continue':
-                        if auto_control_active:
-                            auto_control_active = False
-                            if auto_control_thread:
-                                auto_control_thread.join()
-                            print("⏹️ Kontrol otomatis dihentikan.")
+                        if btn['name'] == 'leave_game' or btn['name'] == 'claim' or btn['name'] == 'continue':
+                            if auto_control_active:
+                                auto_control_active = False
+                                if auto_control_thread:
+                                    auto_control_thread.join()
+                                print("⏹️ Kontrol otomatis dihentikan.")
 
                 time.sleep(1)
             else:
