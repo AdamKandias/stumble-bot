@@ -11,6 +11,13 @@ auto_control_active = False
 auto_control_thread = None
 bot_paused = False
 
+# Tracking untuk recovery choose_event
+choose_event_start_time = None
+in_recovery_mode = False
+last_esc_press_time = None
+CHOOSE_EVENT_TIMEOUT = 70  # 70 detik timeout
+ESC_PRESS_INTERVAL = 15  # Tekan ESC setiap 15 detik
+
 # Konfigurasi dasar
 GAME_AREA = {
     "top": 40,
@@ -204,6 +211,9 @@ def keyboard_listener():
 def main():
     global bot_paused
     global auto_control_active
+    global choose_event_start_time
+    global in_recovery_mode
+    global last_esc_press_time
     print("🎮 Stumble Guys Bot") 
     print("="*40)
     
@@ -241,10 +251,16 @@ def main():
                 # Prioritaskan ok2 jika terdeteksi
                 ok2_button = None
                 other_buttons = []
+                choose_event_button = None
+                event_menu_button = None
                 
                 for btn in buttons:
                     if btn['name'] == 'ok2':
                         ok2_button = btn
+                    elif btn['name'] == 'choose_event':
+                        choose_event_button = btn
+                    elif btn['name'] == 'event_menu':
+                        event_menu_button = btn
                     else:
                         other_buttons.append(btn)
                 
@@ -253,8 +269,79 @@ def main():
                     print(f"🎯 Detected {ok2_button['name']} (Confidence: {ok2_button['confidence']:.2f}) - PRIORITAS")
                     click_in_game(*ok2_button['click_pos'])
                     time.sleep(0.5)  # Beri waktu untuk modal tertutup
+                    # Reset choose_event timer jika ok2 diklik
+                    choose_event_start_time = None
+                    in_recovery_mode = False
+                    last_esc_press_time = None
                 else:
-                    # Jika tidak ada ok2, klik tombol lain seperti biasa
+                    # Handle recovery mode untuk choose_event loading bug
+                    if choose_event_button:
+                        current_time = time.time()
+                        
+                        # Mulai tracking waktu jika baru pertama kali terdeteksi
+                        if choose_event_start_time is None:
+                            choose_event_start_time = current_time
+                            print(f"⏱️ Mulai tracking choose_event...")
+                        
+                        # Cek apakah sudah timeout (70 detik)
+                        elapsed_time = current_time - choose_event_start_time
+                        if elapsed_time >= CHOOSE_EVENT_TIMEOUT and not in_recovery_mode:
+                            print(f"⚠️ choose_event terdeteksi selama {elapsed_time:.1f} detik - MULAI RECOVERY MODE")
+                            in_recovery_mode = True
+                        
+                        # Jika dalam recovery mode, tekan ESC setiap 15 detik sampai event_menu terdeteksi
+                        if in_recovery_mode:
+                            if event_menu_button:
+                                # event_menu terdeteksi, recovery berhasil
+                                print(f"✅ Recovery berhasil! event_menu terdeteksi")
+                                choose_event_start_time = None
+                                in_recovery_mode = False
+                                last_esc_press_time = None
+                                # Klik event_menu untuk masuk lagi
+                                print(f"🎯 Detected {event_menu_button['name']} (Confidence: {event_menu_button['confidence']:.2f})")
+                                click_in_game(*event_menu_button['click_pos'])
+                                time.sleep(1)
+                            else:
+                                # Tekan ESC untuk recovery (hanya setiap 15 detik)
+                                should_press_esc = False
+                                if last_esc_press_time is None:
+                                    # ESC belum pernah ditekan, tekan sekarang
+                                    should_press_esc = True
+                                else:
+                                    # Cek apakah sudah 15 detik sejak ESC terakhir
+                                    time_since_last_esc = current_time - last_esc_press_time
+                                    if time_since_last_esc >= ESC_PRESS_INTERVAL:
+                                        should_press_esc = True
+                                
+                                if should_press_esc:
+                                    print(f"🔧 Tekan ESC untuk recovery... (elapsed: {elapsed_time:.1f}s)")
+                                    pyautogui.press('esc')
+                                    last_esc_press_time = current_time
+                                    time.sleep(0.5)
+                                else:
+                                    time_since_last_esc = current_time - last_esc_press_time
+                                    print(f"⏳ Menunggu untuk tekan ESC lagi... ({ESC_PRESS_INTERVAL - time_since_last_esc:.1f}s lagi)")
+                        else:
+                            # Normal flow: klik choose_event
+                            print(f"🎯 Detected {choose_event_button['name']} (Confidence: {choose_event_button['confidence']:.2f}) - Elapsed: {elapsed_time:.1f}s")
+                            click_in_game(*choose_event_button['click_pos'])
+                    else:
+                        # choose_event tidak terdeteksi, reset timer
+                        if choose_event_start_time is not None:
+                            print(f"✅ choose_event tidak terdeteksi lagi, reset timer")
+                            choose_event_start_time = None
+                            in_recovery_mode = False
+                            last_esc_press_time = None
+                    
+                    # Jika event_menu terdeteksi dan tidak dalam recovery mode, klik normal
+                    if event_menu_button and not in_recovery_mode:
+                        print(f"🎯 Detected {event_menu_button['name']} (Confidence: {event_menu_button['confidence']:.2f})")
+                        click_in_game(*event_menu_button['click_pos'])
+                        # Reset choose_event timer saat klik event_menu
+                        choose_event_start_time = None
+                        last_esc_press_time = None
+                    
+                    # Klik tombol lain seperti biasa
                     for btn in other_buttons:
                         print(f"🎯 Detected {btn['name']} (Confidence: {btn['confidence']:.2f})")
                         click_in_game(*btn['click_pos'])
@@ -272,6 +359,10 @@ def main():
                                 if auto_control_thread:
                                     auto_control_thread.join()
                                 print("⏹️ Kontrol otomatis dihentikan.")
+                            # Reset choose_event timer saat keluar dari game
+                            choose_event_start_time = None
+                            in_recovery_mode = False
+                            last_esc_press_time = None
 
                 time.sleep(1)
             else:
