@@ -22,6 +22,10 @@ ESC_PRESS_INTERVAL = 15  # Tekan ESC setiap 15 detik
 event_menu_consecutive_count = 0
 EVENT_MENU_CLICK_THRESHOLD = 3  # Klik ok2 jika event_menu terdeteksi 3 kali berturut-turut
 
+# Tracking untuk leave_game counter
+leave_game_consecutive_count = 0
+LEAVE_GAME_ESC_THRESHOLD = 3  # Tekan ESC jika leave_game terdeteksi 3 kali berturut-turut
+
 # Konfigurasi dasar
 GAME_AREA = {
     "top": 40,
@@ -219,6 +223,7 @@ def main():
     global in_recovery_mode
     global last_esc_press_time
     global event_menu_consecutive_count
+    global leave_game_consecutive_count
     print("🎮 Stumble Guys Bot") 
     print("="*40)
     
@@ -259,6 +264,7 @@ def main():
                 other_buttons = []
                 choose_event_button = None
                 event_menu_button = None
+                leave_game_button = None
                 
                 for btn in buttons:
                     if btn['name'] == 'ok':
@@ -270,6 +276,9 @@ def main():
                     elif btn['name'] == 'event_menu':
                         # Simpan event_menu tanpa filter confidence
                         event_menu_button = btn
+                    elif btn['name'] == 'leave_game':
+                        # Simpan leave_game untuk counter tracking
+                        leave_game_button = btn
                     else:
                         other_buttons.append(btn)
                 
@@ -283,25 +292,45 @@ def main():
                         print(f"✅ event_menu tidak terdeteksi, reset counter (sebelumnya: {event_menu_consecutive_count})")
                         event_menu_consecutive_count = 0
                 
+                # Handle counter leave_game
+                if leave_game_button:
+                    leave_game_consecutive_count += 1
+                    print(f"📊 leave_game terdeteksi ({leave_game_consecutive_count}/{LEAVE_GAME_ESC_THRESHOLD} berturut-turut) - Confidence: {leave_game_button['confidence']:.2f}")
+                    
+                    # Jika sudah 3 kali berturut-turut, tekan ESC
+                    if leave_game_consecutive_count >= LEAVE_GAME_ESC_THRESHOLD:
+                        print(f"🔧 leave_game terdeteksi {leave_game_consecutive_count} kali berturut-turut, tekan ESC")
+                        pyautogui.press('esc')
+                        time.sleep(0.5)
+                        # Reset counter
+                        leave_game_consecutive_count = 0
+                else:
+                    # Reset counter jika leave_game tidak terdeteksi
+                    if leave_game_consecutive_count > 0:
+                        print(f"✅ leave_game tidak terdeteksi, reset counter (sebelumnya: {leave_game_consecutive_count})")
+                        leave_game_consecutive_count = 0
+                
                 # Klik ok atau ok2 terlebih dahulu jika ada (prioritas tertinggi)
                 if ok2_button:
                     print(f"🎯 Detected {ok2_button['name']} (Confidence: {ok2_button['confidence']:.2f}) - PRIORITAS")
                     click_in_game(*ok2_button['click_pos'])
                     time.sleep(0.5)  # Beri waktu untuk modal tertutup
-                    # Reset choose_event timer dan event_menu counter jika ok2 diklik
+                    # Reset choose_event timer dan counter jika ok2 diklik
                     choose_event_start_time = None
                     in_recovery_mode = False
                     last_esc_press_time = None
                     event_menu_consecutive_count = 0
+                    leave_game_consecutive_count = 0
                 elif ok_button:
                     print(f"🎯 Detected {ok_button['name']} (Confidence: {ok_button['confidence']:.2f}) - PRIORITAS")
                     click_in_game(*ok_button['click_pos'])
                     time.sleep(0.5)  # Beri waktu untuk modal tertutup
-                    # Reset choose_event timer dan event_menu counter jika ok diklik
+                    # Reset choose_event timer dan counter jika ok diklik
                     choose_event_start_time = None
                     in_recovery_mode = False
                     last_esc_press_time = None
                     event_menu_consecutive_count = 0
+                    leave_game_consecutive_count = 0
                 else:
                     # Handle recovery mode untuk choose_event loading bug
                     if choose_event_button:
@@ -408,6 +437,19 @@ def main():
                             choose_event_start_time = None
                             in_recovery_mode = False
                             last_esc_press_time = None
+                            # Reset leave_game counter saat keluar dari game
+                            leave_game_consecutive_count = 0
+                    
+                    # Handle leave_game: jika belum mencapai threshold, klik normal
+                    # (jika sudah >= 3, ESC sudah ditekan di bagian counter di atas)
+                    if leave_game_button and leave_game_consecutive_count < LEAVE_GAME_ESC_THRESHOLD:
+                        print(f"🎯 Detected {leave_game_button['name']} (Confidence: {leave_game_button['confidence']:.2f})")
+                        click_in_game(*leave_game_button['click_pos'])
+                        # Reset choose_event timer saat klik leave_game
+                        choose_event_start_time = None
+                        in_recovery_mode = False
+                        last_esc_press_time = None
+                        # Counter TIDAK di-reset di sini, akan di-reset jika leave_game tidak terdeteksi di iterasi berikutnya
 
                 time.sleep(1)
             else:
