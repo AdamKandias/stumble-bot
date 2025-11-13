@@ -18,6 +18,10 @@ last_esc_press_time = None
 CHOOSE_EVENT_TIMEOUT = 70  # 70 detik timeout
 ESC_PRESS_INTERVAL = 15  # Tekan ESC setiap 15 detik
 
+# Tracking untuk event_menu counter
+event_menu_consecutive_count = 0
+EVENT_MENU_CLICK_THRESHOLD = 3  # Klik ok2 jika event_menu terdeteksi 3 kali berturut-turut
+
 # Konfigurasi dasar
 GAME_AREA = {
     "top": 40,
@@ -214,6 +218,7 @@ def main():
     global choose_event_start_time
     global in_recovery_mode
     global last_esc_press_time
+    global event_menu_consecutive_count
     print("🎮 Stumble Guys Bot") 
     print("="*40)
     
@@ -255,8 +260,6 @@ def main():
                 choose_event_button = None
                 event_menu_button = None
                 
-                event_menu_low_confidence = False
-                
                 for btn in buttons:
                     if btn['name'] == 'ok':
                         ok_button = btn
@@ -265,43 +268,40 @@ def main():
                     elif btn['name'] == 'choose_event':
                         choose_event_button = btn
                     elif btn['name'] == 'event_menu':
-                        # Hanya simpan event_menu jika confidence >= 90%
-                        if btn['confidence'] >= 0.9:
-                            event_menu_button = btn
-                        else:
-                            # Jika confidence rendah, tandai untuk klik ok2
-                            event_menu_low_confidence = True
-                            print(f"⚠️ event_menu terdeteksi tapi confidence rendah ({btn['confidence']:.2f} < 0.90), akan klik ok2")
+                        # Simpan event_menu tanpa filter confidence
+                        event_menu_button = btn
                     else:
                         other_buttons.append(btn)
+                
+                # Handle counter event_menu
+                if event_menu_button:
+                    event_menu_consecutive_count += 1
+                    print(f"📊 event_menu terdeteksi ({event_menu_consecutive_count}/{EVENT_MENU_CLICK_THRESHOLD} berturut-turut) - Confidence: {event_menu_button['confidence']:.2f}")
+                else:
+                    # Reset counter jika event_menu tidak terdeteksi
+                    if event_menu_consecutive_count > 0:
+                        print(f"✅ event_menu tidak terdeteksi, reset counter (sebelumnya: {event_menu_consecutive_count})")
+                        event_menu_consecutive_count = 0
                 
                 # Klik ok atau ok2 terlebih dahulu jika ada (prioritas tertinggi)
                 if ok2_button:
                     print(f"🎯 Detected {ok2_button['name']} (Confidence: {ok2_button['confidence']:.2f}) - PRIORITAS")
                     click_in_game(*ok2_button['click_pos'])
                     time.sleep(0.5)  # Beri waktu untuk modal tertutup
-                    # Reset choose_event timer jika ok2 diklik
+                    # Reset choose_event timer dan event_menu counter jika ok2 diklik
                     choose_event_start_time = None
                     in_recovery_mode = False
                     last_esc_press_time = None
+                    event_menu_consecutive_count = 0
                 elif ok_button:
                     print(f"🎯 Detected {ok_button['name']} (Confidence: {ok_button['confidence']:.2f}) - PRIORITAS")
                     click_in_game(*ok_button['click_pos'])
                     time.sleep(0.5)  # Beri waktu untuk modal tertutup
-                    # Reset choose_event timer jika ok diklik
+                    # Reset choose_event timer dan event_menu counter jika ok diklik
                     choose_event_start_time = None
                     in_recovery_mode = False
                     last_esc_press_time = None
-                elif event_menu_low_confidence:
-                    # Jika event_menu confidence rendah, langsung klik ok2 (atau ok)
-                    ok2_pos = BUTTON_TEMPLATES['ok2']['click_pos']
-                    print(f"🔧 event_menu confidence rendah, klik ok2 di posisi {ok2_pos}")
-                    click_in_game(*ok2_pos)
-                    time.sleep(0.5)
-                    # Reset choose_event timer
-                    choose_event_start_time = None
-                    in_recovery_mode = False
-                    last_esc_press_time = None
+                    event_menu_consecutive_count = 0
                 else:
                     # Handle recovery mode untuk choose_event loading bug
                     if choose_event_button:
@@ -362,13 +362,29 @@ def main():
                             in_recovery_mode = False
                             last_esc_press_time = None
                     
-                    # Jika event_menu terdeteksi (dengan confidence >= 90%) dan tidak dalam recovery mode, klik normal
+                    # Handle event_menu: jika sudah 3 kali berturut-turut, klik ok2. Jika belum, klik event_menu normal
                     if event_menu_button and not in_recovery_mode:
-                        print(f"🎯 Detected {event_menu_button['name']} (Confidence: {event_menu_button['confidence']:.2f})")
-                        click_in_game(*event_menu_button['click_pos'])
-                        # Reset choose_event timer saat klik event_menu
-                        choose_event_start_time = None
-                        last_esc_press_time = None
+                        if event_menu_consecutive_count >= EVENT_MENU_CLICK_THRESHOLD:
+                            # Sudah 3 kali berturut-turut, klik ok2
+                            ok2_pos = BUTTON_TEMPLATES['ok2']['click_pos']
+                            print(f"🔧 event_menu terdeteksi {event_menu_consecutive_count} kali berturut-turut, klik ok2 di posisi {ok2_pos}")
+                            click_in_game(*ok2_pos)
+                            time.sleep(0.5)
+                            # Reset counter dan timer
+                            event_menu_consecutive_count = 0
+                            choose_event_start_time = None
+                            in_recovery_mode = False
+                            last_esc_press_time = None
+                        else:
+                            # Belum mencapai threshold, klik event_menu normal
+                            # JANGAN reset counter di sini, biarkan counter terus bertambah sampai mencapai 3
+                            # Counter hanya di-reset jika event_menu tidak terdeteksi lagi (berarti berhasil diklik)
+                            print(f"🎯 Detected {event_menu_button['name']} (Confidence: {event_menu_button['confidence']:.2f})")
+                            click_in_game(*event_menu_button['click_pos'])
+                            # Reset choose_event timer saat klik event_menu
+                            choose_event_start_time = None
+                            last_esc_press_time = None
+                            # Counter TIDAK di-reset di sini, akan di-reset jika event_menu tidak terdeteksi di iterasi berikutnya
                     
                     # Klik tombol lain seperti biasa
                     for btn in other_buttons:
