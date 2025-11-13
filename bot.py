@@ -27,6 +27,14 @@ GAME_AREA = {
 }
 
 BUTTON_TEMPLATES = {
+        "ok": {
+        "image": "ok.png",
+        "click_pos": (485, 710)
+    },
+    "ok2": {
+        "image": "ok2.png",
+        "click_pos": (524, 540)
+    },
     "event_menu": {
         "image": "event_menu.png", 
         "click_pos": (471, 733) 
@@ -54,14 +62,6 @@ BUTTON_TEMPLATES = {
     "skip": {
         "image": "skip.png", 
         "click_pos": (100, 45)
-    },
-    "ok": {
-        "image": "ok.png",
-        "click_pos": (485, 710)
-    },
-    "ok2": {
-        "image": "ok2.png",
-        "click_pos": (485, 710)
     },
 }
  
@@ -248,28 +248,57 @@ def main():
                 frame = get_game_frame()
                 buttons = detector.detect_buttons(frame)
                 
-                # Prioritaskan ok2 jika terdeteksi
+                # Prioritaskan ok dan ok2 jika terdeteksi
+                ok_button = None
                 ok2_button = None
                 other_buttons = []
                 choose_event_button = None
                 event_menu_button = None
                 
+                event_menu_low_confidence = False
+                
                 for btn in buttons:
-                    if btn['name'] == 'ok2':
+                    if btn['name'] == 'ok':
+                        ok_button = btn
+                    elif btn['name'] == 'ok2':
                         ok2_button = btn
                     elif btn['name'] == 'choose_event':
                         choose_event_button = btn
                     elif btn['name'] == 'event_menu':
-                        event_menu_button = btn
+                        # Hanya simpan event_menu jika confidence >= 90%
+                        if btn['confidence'] >= 0.9:
+                            event_menu_button = btn
+                        else:
+                            # Jika confidence rendah, tandai untuk klik ok2
+                            event_menu_low_confidence = True
+                            print(f"⚠️ event_menu terdeteksi tapi confidence rendah ({btn['confidence']:.2f} < 0.90), akan klik ok2")
                     else:
                         other_buttons.append(btn)
                 
-                # Klik ok2 terlebih dahulu jika ada
+                # Klik ok atau ok2 terlebih dahulu jika ada (prioritas tertinggi)
                 if ok2_button:
                     print(f"🎯 Detected {ok2_button['name']} (Confidence: {ok2_button['confidence']:.2f}) - PRIORITAS")
                     click_in_game(*ok2_button['click_pos'])
                     time.sleep(0.5)  # Beri waktu untuk modal tertutup
                     # Reset choose_event timer jika ok2 diklik
+                    choose_event_start_time = None
+                    in_recovery_mode = False
+                    last_esc_press_time = None
+                elif ok_button:
+                    print(f"🎯 Detected {ok_button['name']} (Confidence: {ok_button['confidence']:.2f}) - PRIORITAS")
+                    click_in_game(*ok_button['click_pos'])
+                    time.sleep(0.5)  # Beri waktu untuk modal tertutup
+                    # Reset choose_event timer jika ok diklik
+                    choose_event_start_time = None
+                    in_recovery_mode = False
+                    last_esc_press_time = None
+                elif event_menu_low_confidence:
+                    # Jika event_menu confidence rendah, langsung klik ok2 (atau ok)
+                    ok2_pos = BUTTON_TEMPLATES['ok2']['click_pos']
+                    print(f"🔧 event_menu confidence rendah, klik ok2 di posisi {ok2_pos}")
+                    click_in_game(*ok2_pos)
+                    time.sleep(0.5)
+                    # Reset choose_event timer
                     choose_event_start_time = None
                     in_recovery_mode = False
                     last_esc_press_time = None
@@ -333,7 +362,7 @@ def main():
                             in_recovery_mode = False
                             last_esc_press_time = None
                     
-                    # Jika event_menu terdeteksi dan tidak dalam recovery mode, klik normal
+                    # Jika event_menu terdeteksi (dengan confidence >= 90%) dan tidak dalam recovery mode, klik normal
                     if event_menu_button and not in_recovery_mode:
                         print(f"🎯 Detected {event_menu_button['name']} (Confidence: {event_menu_button['confidence']:.2f})")
                         click_in_game(*event_menu_button['click_pos'])
