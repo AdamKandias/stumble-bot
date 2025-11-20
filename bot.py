@@ -8,6 +8,25 @@ import threading
 import keyboard
 import json
 import os
+import platform
+
+# Import untuk window detection (Mac vs Windows)
+if platform.system() == 'Darwin':  # macOS
+    try:
+        from AppKit import NSWorkspace, NSApplication
+        MAC_AVAILABLE = True
+    except ImportError:
+        MAC_AVAILABLE = False
+        print("⚠️ AppKit tidak tersedia, menggunakan fallback")
+elif platform.system() == 'Windows':
+    try:
+        import pygetwindow as gw
+        WINDOWS_AVAILABLE = True
+    except ImportError:
+        WINDOWS_AVAILABLE = False
+else:
+    MAC_AVAILABLE = False
+    WINDOWS_AVAILABLE = False
 
 auto_control_active = False
 auto_control_thread = None
@@ -220,6 +239,296 @@ def keyboard_listener():
                 print("▶️ Bot dilanjutkan.")
             time.sleep(1)  # Hindari multiple toggle karena tombol ditekan lama
 
+class WindowInfo:
+    """Class untuk menyimpan info window"""
+    def __init__(self, title, left, top, width, height):
+        self.title = title
+        self.left = left
+        self.top = top
+        self.width = width
+        self.height = height
+        self.visible = True
+
+def list_windows():
+    """List semua window yang terbuka"""
+    windows = []
+    import subprocess
+    
+    if platform.system() == 'Darwin':  # macOS
+        try:
+            # Metode 1: Gunakan AppKit jika tersedia
+            if MAC_AVAILABLE:
+                try:
+                    workspace = NSWorkspace.sharedWorkspace()
+                    running_apps = workspace.runningApplications()
+                    
+                    for app in running_apps:
+                        if app.isActive() or not app.isHidden():
+                            app_name = app.localizedName()
+                            if app_name and app_name not in ['', 'WindowServer', 'Dock', 'Finder']:
+                                # Coba dapatkan window bounds dengan AppleScript (lebih cepat)
+                                try:
+                                    bounds_script = f'''
+                                    tell application "System Events"
+                                        try
+                                            set appProcess to first process whose name is "{app_name}"
+                                            if exists window 1 of appProcess then
+                                                set winBounds to bounds of window 1 of appProcess
+                                                return winBounds
+                                            end if
+                                        end try
+                                    end tell
+                                    '''
+                                    bounds_result = subprocess.run(
+                                        ['osascript', '-e', bounds_script],
+                                        capture_output=True,
+                                        text=True,
+                                        timeout=1
+                                    )
+                                    if bounds_result.returncode == 0 and bounds_result.stdout.strip():
+                                        bounds = [int(x.strip()) for x in bounds_result.stdout.strip().split(',')]
+                                        if len(bounds) == 4:
+                                            left, top, right, bottom = bounds
+                                            width = right - left
+                                            height = bottom - top
+                                            if width > 100 and height > 100:  # Filter window yang terlalu kecil
+                                                windows.append(WindowInfo(
+                                                    app_name,
+                                                    left, top, width, height
+                                                ))
+                                                continue
+                                except:
+                                    pass
+                                
+                                # Fallback: tambahkan dengan default size
+                                windows.append(WindowInfo(
+                                    app_name,
+                                    0, 0, 1024, 768
+                                ))
+                except Exception as e:
+                    print(f"⚠️ AppKit error: {str(e)}")
+            
+            # Metode 2: Jika AppKit gagal, gunakan AppleScript sederhana
+            if not windows:
+                try:
+                    # List aplikasi yang sedang berjalan (lebih cepat)
+                    script = 'tell application "System Events" to get name of every process whose background only is false'
+                    result = subprocess.run(
+                        ['osascript', '-e', script],
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    
+                    if result.returncode == 0 and result.stdout.strip():
+                        # Parse hasil: "app1, app2, app3"
+                        app_names = [name.strip().strip('"') for name in result.stdout.strip().split(',') if name.strip()]
+                        
+                        # Filter aplikasi yang tidak relevan
+                        exclude = ['WindowServer', 'Dock', 'Finder', 'loginwindow', 'kernel_task']
+                        app_names = [app for app in app_names if app not in exclude]
+                        
+                        for app_name in app_names[:20]:  # Limit untuk performa
+                            windows.append(WindowInfo(
+                                app_name,
+                                0, 0, 1024, 768  # Default size, user bisa adjust
+                            ))
+                except Exception as e:
+                    print(f"⚠️ AppleScript error: {str(e)}")
+                    
+        except Exception as e:
+            print(f"⚠️ Error mendapatkan list windows (Mac): {str(e)}")
+            
+    elif platform.system() == 'Windows':
+        try:
+            if WINDOWS_AVAILABLE:
+                all_windows = gw.getAllWindows()
+                for w in all_windows:
+                    if w.visible and w.title.strip():
+                        windows.append(WindowInfo(
+                            w.title,
+                            w.left,
+                            w.top,
+                            w.width,
+                            w.height
+                        ))
+        except Exception as e:
+            print(f"⚠️ Error mendapatkan list windows (Windows): {str(e)}")
+    
+    # Remove duplicates berdasarkan title
+    seen = set()
+    unique_windows = []
+    for win in windows:
+        if win.title not in seen:
+            seen.add(win.title)
+            unique_windows.append(win)
+    
+    return unique_windows
+
+def select_window():
+    """Pilih window untuk di-detect"""
+    global GAME_AREA, CONFIG
+    
+    print("\n🪟 Pilih Window/Aplikasi untuk di-detect:")
+    print("="*50)
+    
+    windows = list_windows()
+    
+    if not windows:
+        print("❌ Tidak ada window yang ditemukan!")
+        print("\n💡 Kemungkinan penyebab:")
+        print("   1. Aplikasi belum terbuka - Pastikan aplikasi (UTM, dll) sudah dibuka")
+        print("   2. Permission belum diberikan - Di Mac perlu permission Accessibility")
+        print("      → System Preferences → Security & Privacy → Privacy → Accessibility")
+        print("      → Tambahkan Terminal/Python dan centang checkbox")
+        print("      → Restart Terminal setelah memberikan permission")
+        print("   3. Atau gunakan konfigurasi manual di config.json")
+        
+        manual = input("\n📝 Masukkan nama aplikasi manual? (y/n, default=n): ").lower()
+        if manual == 'y':
+            app_name = input("Nama aplikasi: ").strip()
+            if app_name:
+                # Coba dapatkan bounds
+                try:
+                    import subprocess
+                    script = f'''
+                    tell application "System Events"
+                        try
+                            set appProcess to first process whose name is "{app_name}"
+                            if exists window 1 of appProcess then
+                                set winBounds to bounds of window 1 of appProcess
+                                return winBounds
+                            end if
+                        end try
+                    end tell
+                    '''
+                    result = subprocess.run(
+                        ['osascript', '-e', script],
+                        capture_output=True,
+                        text=True,
+                        timeout=2
+                    )
+                    if result.returncode == 0 and result.stdout.strip():
+                        bounds = [int(x.strip()) for x in result.stdout.strip().split(',')]
+                        if len(bounds) == 4:
+                            left, top, right, bottom = bounds
+                            width = right - left
+                            height = bottom - top
+                            GAME_AREA = {"top": top, "left": left, "width": width, "height": height}
+                            CONFIG['game_area'] = GAME_AREA
+                            CONFIG['selected_window'] = app_name
+                            print(f"✅ Window ditemukan: {app_name} ({width}x{height})")
+                            return True
+                except:
+                    pass
+                
+                # Jika gagal, gunakan default
+                print(f"⚠️ Tidak bisa mendapatkan ukuran window, gunakan default")
+                GAME_AREA = {"top": 0, "left": 0, "width": 1024, "height": 768}
+                CONFIG['game_area'] = GAME_AREA
+                CONFIG['selected_window'] = app_name
+                return True
+        
+        return False
+    
+    # Tampilkan list windows
+    print(f"\n📋 Ditemukan {len(windows)} window:")
+    for i, window in enumerate(windows, 1):
+        size_info = f"{window.width}x{window.height}" if window.width > 0 and window.height > 0 else "ukuran tidak valid"
+        print(f"  {i}. {window.title[:60]} ({size_info})")
+    
+    print(f"\n  0. Gunakan konfigurasi manual (skip)")
+    
+    try:
+        choice = input("\nPilih window (0-{}): ".format(len(windows)))
+        choice = int(choice)
+        
+        if choice == 0:
+            print("✅ Menggunakan konfigurasi manual dari config.json")
+            return True
+        
+        if 1 <= choice <= len(windows):
+            selected_window = windows[choice - 1]
+            
+            # Dapatkan posisi dan ukuran window
+            left = selected_window.left
+            top = selected_window.top
+            width = selected_window.width
+            height = selected_window.height
+            
+            print(f"\n✅ Window dipilih: {selected_window.title}")
+            print(f"   Posisi: ({left}, {top})")
+            print(f"   Ukuran: {width}x{height}")
+            
+            # Update game_area
+            GAME_AREA = {
+                "top": top,
+                "left": left,
+                "width": width,
+                "height": height
+            }
+            
+            # Update config dan simpan
+            CONFIG['game_area'] = GAME_AREA
+            CONFIG['selected_window'] = selected_window.title
+            
+            # Simpan ke config.json
+            try:
+                with open("config.json", 'w', encoding='utf-8') as f:
+                    json.dump(CONFIG, f, indent=2, ensure_ascii=False)
+                print("💾 Konfigurasi disimpan ke config.json")
+            except Exception as e:
+                print(f"⚠️ Gagal menyimpan config: {str(e)}")
+            
+            return True
+        else:
+            print("❌ Pilihan tidak valid!")
+            return False
+            
+    except ValueError:
+        print("❌ Input tidak valid! Harus angka.")
+        return False
+    except Exception as e:
+        print(f"❌ Error: {str(e)}")
+        return False
+
+def refresh_window_selection():
+    """Refresh window selection jika window sudah dipilih sebelumnya"""
+    global GAME_AREA, CONFIG
+    
+    # Cek apakah ada selected_window di config
+    if 'selected_window' in CONFIG and CONFIG['selected_window']:
+        window_title = CONFIG['selected_window']
+        print(f"\n🔍 Mencari window: {window_title}")
+        
+        try:
+            windows = list_windows()
+            # Cari window dengan title yang sama
+            for window in windows:
+                if window.title == window_title or window_title in window.title:
+                    # Update game_area
+                    GAME_AREA = {
+                        "top": window.top,
+                        "left": window.left,
+                        "width": window.width,
+                        "height": window.height
+                    }
+                    CONFIG['game_area'] = GAME_AREA
+                    print(f"✅ Window ditemukan: {window.title}")
+                    print(f"   Posisi: ({window.left}, {window.top})")
+                    print(f"   Ukuran: {window.width}x{window.height}")
+                    return True
+            
+            print(f"⚠️ Window '{window_title}' tidak ditemukan!")
+            print("💡 Window mungkin sudah ditutup atau berganti nama.")
+            return False
+            
+        except Exception as e:
+            print(f"⚠️ Error mencari window: {str(e)}")
+            return False
+    
+    return False
+
 
 def main():
     global bot_paused
@@ -229,11 +538,28 @@ def main():
     global last_esc_press_time
     global event_menu_consecutive_count
     global leave_game_consecutive_count
+    global GAME_AREA, CONFIG
+    
     print("🎮 Stumble Guys Bot") 
     print("="*40)
     
+    # Coba refresh window selection dari config
+    window_found = refresh_window_selection()
+    
     # Tampilkan info konfigurasi
     print(f"\n🖥️ Area Game:")
+    print(f"Top: {GAME_AREA['top']}, Left: {GAME_AREA['left']}")
+    print(f"Width: {GAME_AREA['width']}, Height: {GAME_AREA['height']}")
+    if 'selected_window' in CONFIG and CONFIG['selected_window']:
+        print(f"Window: {CONFIG['selected_window']}")
+    
+    # Tanya apakah ingin pilih window baru
+    if not window_found or input("\n🪟 Pilih window baru? (y/n, default=n): ").lower() == 'y':
+        if not select_window():
+            print("⚠️ Menggunakan konfigurasi manual dari config.json")
+    
+    # Tampilkan info konfigurasi setelah update
+    print(f"\n🖥️ Area Game (Final):")
     print(f"Top: {GAME_AREA['top']}, Left: {GAME_AREA['left']}")
     print(f"Width: {GAME_AREA['width']}, Height: {GAME_AREA['height']}")
     

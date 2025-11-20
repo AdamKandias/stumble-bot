@@ -4,12 +4,14 @@ Bot otomatis untuk game Stumble Guys yang menggunakan image recognition untuk me
 
 ## ✨ Fitur
 
+- ✅ **Pilih Window/Aplikasi** - Pilih aplikasi yang ingin di-detect (UTM, emulator, dll)
 - ✅ Deteksi tombol otomatis menggunakan template matching
 - ✅ Konfigurasi fleksibel melalui file JSON (tidak perlu edit code)
 - ✅ GUI Editor untuk mengedit gambar template dan posisi klik
 - ✅ Cross-platform: bisa di-build untuk Mac dan Windows
 - ✅ Preview mode untuk debugging
 - ✅ Pause/Resume dengan tombol 'P'
+- ✅ Auto-detect window yang sudah dipilih sebelumnya
 
 ## 📋 Requirements
 
@@ -30,17 +32,34 @@ pip install -r requirements.txt
 
 ## 🎮 Cara Menggunakan
 
-### Mode Normal (Tanpa Preview)
+### 1. Pilih Window/Aplikasi
+
+Saat pertama kali menjalankan bot, Anda akan diminta untuk memilih window/aplikasi yang ingin di-detect:
 
 ```bash
 python bot.py
+```
+
+Bot akan menampilkan list semua window yang terbuka (misalnya UTM, emulator, atau aplikasi lain). Pilih window yang ingin di-detect, dan bot akan otomatis mengatur area deteksi sesuai dengan ukuran dan posisi window tersebut.
+
+**Tips:**
+- Pastikan aplikasi yang ingin di-detect sudah terbuka sebelum menjalankan bot
+- Bot akan menyimpan pilihan window ke `config.json`
+- Jika window tidak ditemukan, bot akan menggunakan konfigurasi manual
+
+### 2. Mode Normal (Tanpa Preview)
+
+```bash
+python bot.py
+# Pilih window (jika belum pernah)
 # Pilih opsi 1
 ```
 
-### Mode Preview (Dengan Preview Window)
+### 3. Mode Preview (Dengan Preview Window)
 
 ```bash
 python bot.py
+# Pilih window (jika belum pernah)
 # Pilih opsi 2
 ```
 
@@ -183,6 +202,25 @@ Setiap tombol memiliki:
 2. Cek `detection_threshold` di `config.json` (coba turunkan ke 0.7)
 3. Gunakan mode preview untuk melihat deteksi real-time
 4. Pastikan `game_area` sesuai dengan posisi window game
+
+### Window tidak terdeteksi (Mac)
+
+Jika window tidak muncul di list:
+
+1. **Berikan permission Accessibility:**
+   - Buka **System Preferences** → **Security & Privacy** → **Privacy** → **Accessibility**
+   - Tambahkan Terminal (atau aplikasi yang menjalankan Python)
+   - Centang checkbox untuk memberikan akses
+   - Restart Terminal/Python
+
+2. **Atau gunakan manual input:**
+   - Saat diminta pilih window, pilih opsi manual
+   - Masukkan nama aplikasi (misalnya "UTM")
+   - Bot akan mencoba mendapatkan ukuran window otomatis
+
+3. **Atau set manual di config.json:**
+   - Edit `game_area` di `config.json` secara manual
+   - Set `top`, `left`, `width`, `height` sesuai window Anda
 
 ### Gambar template tidak update
 

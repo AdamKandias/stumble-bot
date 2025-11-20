@@ -1,6 +1,6 @@
 {
   "game_area": {
-    "top": 40,
+    "top": 0,
     "left": 0,
     "width": 1024,
     "height": 768
@@ -8,39 +8,66 @@
   "button_templates": {
     "ok": {
       "image": "ok.png",
-      "click_pos": [485, 710]
+      "click_pos": [
+        485,
+        710
+      ]
     },
     "ok2": {
       "image": "ok2.png",
-      "click_pos": [524, 540]
+      "click_pos": [
+        524,
+        540
+      ]
     },
     "event_menu": {
       "image": "event_menu.png",
-      "click_pos": [471, 733]
+      "click_pos": [
+        471,
+        733
+      ]
     },
     "choose_event": {
       "image": "choose_event.png",
-      "click_pos": [232, 423]
+      "click_pos": [
+        232,
+        423
+      ]
     },
     "play_event": {
       "image": "play_event.png",
-      "click_pos": [652, 700]
+      "click_pos": [
+        652,
+        700
+      ]
     },
     "leave_game": {
       "image": "leave_game.png",
-      "click_pos": [50, 720]
+      "click_pos": [
+        50,
+        720
+      ]
     },
     "claim": {
       "image": "claim.png",
-      "click_pos": [800, 650]
+      "click_pos": [
+        800,
+        650
+      ]
     },
     "continue": {
       "image": "continue.png",
-      "click_pos": [178, 694]
+      "click_pos": [
+        178,
+        694
+      ]
     },
     "skip": {
       "image": "skip.png",
-      "click_pos": [100, 45]
+      "click_pos": [
+        100,
+        45
+      ]
     }
   },
   "settings": {
@@ -49,6 +76,6 @@
     "event_menu_click_threshold": 3,
     "leave_game_esc_threshold": 3,
     "detection_threshold": 0.8
-  }
+  },
+  "selected_window": "UTM"
 }
-
