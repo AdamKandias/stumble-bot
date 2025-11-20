@@ -80,6 +80,8 @@ Fitur Button Editor:
 
 ### Build untuk Mac
 
+**Di Mac, gunakan script ini:**
+
 ```bash
 chmod +x build_mac.sh
 ./build_mac.sh
@@ -89,11 +91,24 @@ Executable akan ada di folder `dist/StumbleBot`
 
 ### Build untuk Windows
 
+**⚠️ Catatan: Script Windows hanya bisa dijalankan di Windows!**
+
+Jika Anda menggunakan Mac:
+- Script `build_windows.bat` **TIDAK bisa dijalankan di Mac**
+- Untuk build Windows executable, Anda perlu:
+  1. Gunakan Windows machine (atau Windows VM)
+  2. Atau gunakan Windows di cloud/remote
+  3. Atau minta teman yang pakai Windows untuk build
+
+**Di Windows, jalankan:**
+
 ```batch
 build_windows.bat
 ```
 
-Executable akan ada di folder `dist/StumbleBot.exe`
+Atau double-click file `build_windows.bat` di Windows Explorer.
+
+Executable akan ada di folder `dist\StumbleBot.exe`
 
 ### Catatan Build
 
@@ -180,6 +195,12 @@ Setiap tombol memiliki:
 1. Pastikan semua dependencies terinstall: `pip install -r requirements.txt`
 2. Pastikan PyInstaller terinstall: `pip install pyinstaller`
 3. Untuk Mac, mungkin perlu install Xcode Command Line Tools
+4. Jika error "Cannot import 'setuptools.build_meta'":
+   - Pastikan setuptools terinstall: `pip install --upgrade setuptools wheel`
+   - Rebuild virtual environment jika perlu
+5. Jika numpy error dengan Python 3.13:
+   - Versi requirements.txt sudah diupdate untuk kompatibel dengan Python 3.13
+   - Pastikan menggunakan versi numpy >= 1.26.0
 
 ## 📝 Catatan
 

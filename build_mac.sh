@@ -16,8 +16,14 @@ source venv/bin/activate
 
 # Install dependencies
 echo "📥 Menginstall dependencies..."
-pip install --upgrade pip
+pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
+
+# Cek apakah pyinstaller terinstall
+if ! command -v pyinstaller &> /dev/null; then
+    echo "❌ PyInstaller tidak terinstall. Menginstall..."
+    pip install pyinstaller
+fi
 
 # Build dengan PyInstaller
 echo "🔨 Building executable dengan PyInstaller..."

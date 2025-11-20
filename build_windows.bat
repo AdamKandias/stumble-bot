@@ -16,8 +16,15 @@ call venv\Scripts\activate.bat
 
 REM Install dependencies
 echo 📥 Menginstall dependencies...
-python -m pip install --upgrade pip
+python -m pip install --upgrade pip setuptools wheel
 pip install -r requirements.txt
+
+REM Cek apakah pyinstaller terinstall
+where pyinstaller >nul 2>&1
+if %errorlevel% neq 0 (
+    echo ❌ PyInstaller tidak terinstall. Menginstall...
+    pip install pyinstaller
+)
 
 REM Build dengan PyInstaller
 echo 🔨 Building executable dengan PyInstaller...
