@@ -1,0 +1,193 @@
+# Stumble Bot 🤖
+
+Bot otomatis untuk game Stumble Guys yang menggunakan image recognition untuk mendeteksi dan mengklik tombol-tombol di game.
+
+## ✨ Fitur
+
+- ✅ Deteksi tombol otomatis menggunakan template matching
+- ✅ Konfigurasi fleksibel melalui file JSON (tidak perlu edit code)
+- ✅ GUI Editor untuk mengedit gambar template dan posisi klik
+- ✅ Cross-platform: bisa di-build untuk Mac dan Windows
+- ✅ Preview mode untuk debugging
+- ✅ Pause/Resume dengan tombol 'P'
+
+## 📋 Requirements
+
+- Python 3.8 atau lebih baru
+- Semua dependencies ada di `requirements.txt`
+
+## 🚀 Instalasi
+
+### 1. Clone atau download project ini
+
+### 2. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 3. Pastikan semua file gambar (.png) ada di folder project
+
+## 🎮 Cara Menggunakan
+
+### Mode Normal (Tanpa Preview)
+
+```bash
+python bot.py
+# Pilih opsi 1
+```
+
+### Mode Preview (Dengan Preview Window)
+
+```bash
+python bot.py
+# Pilih opsi 2
+```
+
+### Kontrol Bot
+
+- **P** - Pause/Resume bot
+- **Ctrl+C** - Stop bot
+- **Q** (di preview window) - Quit
+
+## 🎨 Menggunakan Button Editor
+
+Untuk mengedit konfigurasi tombol tanpa perlu edit code:
+
+```bash
+python button_editor.py
+```
+
+Fitur Button Editor:
+- ✅ Ganti gambar template (khususnya `choose_event.png`)
+- ✅ Edit posisi klik (X, Y)
+- ✅ Ambil screenshot dari game area
+- ✅ Preview gambar template
+- ✅ Edit game area (top, left, width, height)
+- ✅ Edit detection threshold
+- ✅ Simpan konfigurasi ke `config.json`
+
+### Cara Edit Gambar Template
+
+1. Buka `button_editor.py`
+2. Pilih tombol yang ingin diedit (misalnya `choose_event`)
+3. Klik "Ganti Gambar Template" untuk memilih file gambar baru
+4. Atau klik "Ambil Screenshot" untuk mengambil screenshot dari game
+5. Edit posisi klik jika perlu
+6. Klik "Simpan Konfigurasi"
+
+## 🔨 Build untuk Mac dan Windows
+
+### Build untuk Mac
+
+```bash
+chmod +x build_mac.sh
+./build_mac.sh
+```
+
+Executable akan ada di folder `dist/StumbleBot`
+
+### Build untuk Windows
+
+```batch
+build_windows.bat
+```
+
+Executable akan ada di folder `dist/StumbleBot.exe`
+
+### Catatan Build
+
+- Pastikan semua file `.png` ada di folder yang sama dengan executable
+- File `config.json` akan otomatis dibuat jika tidak ada saat pertama kali run
+- Untuk distribusi, copy semua file `.png` dan `config.json` ke folder yang sama dengan executable
+
+## 📁 Struktur File
+
+```
+stumble-bot/
+├── bot.py                 # Main bot script
+├── button_editor.py       # GUI editor untuk konfigurasi
+├── config.json            # Konfigurasi tombol dan settings
+├── requirements.txt       # Python dependencies
+├── build_mac.sh           # Build script untuk Mac
+├── build_windows.bat      # Build script untuk Windows
+├── *.png                  # Template gambar untuk deteksi tombol
+└── README.md              # Dokumentasi ini
+```
+
+## ⚙️ Konfigurasi
+
+Semua konfigurasi ada di file `config.json`:
+
+```json
+{
+  "game_area": {
+    "top": 40,
+    "left": 0,
+    "width": 1024,
+    "height": 768
+  },
+  "button_templates": {
+    "choose_event": {
+      "image": "choose_event.png",
+      "click_pos": [232, 423]
+    },
+    ...
+  },
+  "settings": {
+    "detection_threshold": 0.8,
+    "choose_event_timeout": 70,
+    ...
+  }
+}
+```
+
+### Game Area
+
+Area layar yang akan di-scan untuk deteksi tombol. Sesuaikan dengan posisi window game Anda.
+
+### Button Templates
+
+Setiap tombol memiliki:
+- `image`: Nama file gambar template
+- `click_pos`: Posisi [X, Y] untuk klik (relatif terhadap game area)
+
+### Settings
+
+- `detection_threshold`: Threshold untuk template matching (0.0 - 1.0)
+- `choose_event_timeout`: Timeout untuk recovery mode (detik)
+- `esc_press_interval`: Interval tekan ESC untuk recovery (detik)
+- `event_menu_click_threshold`: Threshold untuk klik ok2 (jumlah deteksi berturut-turut)
+- `leave_game_esc_threshold`: Threshold untuk tekan ESC (jumlah deteksi berturut-turut)
+
+## 🐛 Troubleshooting
+
+### Bot tidak mendeteksi tombol
+
+1. Cek apakah gambar template sesuai dengan tampilan game saat ini
+2. Cek `detection_threshold` di `config.json` (coba turunkan ke 0.7)
+3. Gunakan mode preview untuk melihat deteksi real-time
+4. Pastikan `game_area` sesuai dengan posisi window game
+
+### Gambar template tidak update
+
+1. Pastikan file gambar sudah diganti di folder project
+2. Restart bot setelah mengganti gambar
+3. Gunakan Button Editor untuk memastikan konfigurasi tersimpan
+
+### Build error
+
+1. Pastikan semua dependencies terinstall: `pip install -r requirements.txt`
+2. Pastikan PyInstaller terinstall: `pip install pyinstaller`
+3. Untuk Mac, mungkin perlu install Xcode Command Line Tools
+
+## 📝 Catatan
+
+- Bot ini menggunakan image recognition, jadi pastikan tampilan game konsisten
+- Jika game update dan UI berubah, update gambar template menggunakan Button Editor
+- Bot ini hanya untuk keperluan edukasi dan personal use
+
+## 📄 License
+
+Free to use for personal projects.
+

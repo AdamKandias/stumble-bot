@@ -6,6 +6,8 @@ from mss import mss
 import random
 import threading
 import keyboard
+import json
+import os
 
 auto_control_active = False
 auto_control_thread = None
@@ -15,63 +17,62 @@ bot_paused = False
 choose_event_start_time = None
 in_recovery_mode = False
 last_esc_press_time = None
-CHOOSE_EVENT_TIMEOUT = 70  # 70 detik timeout
-ESC_PRESS_INTERVAL = 15  # Tekan ESC setiap 15 detik
 
 # Tracking untuk event_menu counter
 event_menu_consecutive_count = 0
-EVENT_MENU_CLICK_THRESHOLD = 3  # Klik ok2 jika event_menu terdeteksi 3 kali berturut-turut
 
 # Tracking untuk leave_game counter
 leave_game_consecutive_count = 0
-LEAVE_GAME_ESC_THRESHOLD = 3  # Tekan ESC jika leave_game terdeteksi 3 kali berturut-turut
 
-# Konfigurasi dasar
-GAME_AREA = {
-    "top": 40,
-    "left": 0,
-    "width": 1024,
-    "height": 768
-}
+# Load konfigurasi dari JSON
+def load_config():
+    """Load konfigurasi dari config.json"""
+    config_file = "config.json"
+    if os.path.exists(config_file):
+        with open(config_file, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    else:
+        # Default config jika file tidak ada
+        print("⚠️ config.json tidak ditemukan, menggunakan konfigurasi default")
+        return {
+            "game_area": {"top": 40, "left": 0, "width": 1024, "height": 768},
+            "button_templates": {
+                "ok": {"image": "ok.png", "click_pos": [485, 710]},
+                "ok2": {"image": "ok2.png", "click_pos": [524, 540]},
+                "event_menu": {"image": "event_menu.png", "click_pos": [471, 733]},
+                "choose_event": {"image": "choose_event.png", "click_pos": [232, 423]},
+                "play_event": {"image": "play_event.png", "click_pos": [652, 700]},
+                "leave_game": {"image": "leave_game.png", "click_pos": [50, 720]},
+                "claim": {"image": "claim.png", "click_pos": [800, 650]},
+                "continue": {"image": "continue.png", "click_pos": [178, 694]},
+                "skip": {"image": "skip.png", "click_pos": [100, 45]}
+            },
+            "settings": {
+                "choose_event_timeout": 70,
+                "esc_press_interval": 15,
+                "event_menu_click_threshold": 3,
+                "leave_game_esc_threshold": 3,
+                "detection_threshold": 0.8
+            }
+        }
 
-BUTTON_TEMPLATES = {
-        "ok": {
-        "image": "ok.png",
-        "click_pos": (485, 710)
-    },
-    "ok2": {
-        "image": "ok2.png",
-        "click_pos": (524, 540)
-    },
-    "event_menu": {
-        "image": "event_menu.png", 
-        "click_pos": (471, 733) 
-    },
-    "choose_event": {
-        "image": "choose_event.png", 
-        "click_pos": (232, 423) 
-    },
-    "play_event": {
-        "image": "play_event.png",
-        "click_pos": (652, 700)
-    },
-    "leave_game": { 
-        "image": "leave_game.png",  
-        "click_pos": (50 , 720)
-    },
-    "claim": { 
-        "image": "claim.png",
-        "click_pos": (800, 650)
-    },
-    "continue": {
-        "image": "continue.png",
-        "click_pos": (178, 694)
-    },
-    "skip": {
-        "image": "skip.png", 
-        "click_pos": (100, 45)
-    },
-}
+# Load konfigurasi
+CONFIG = load_config()
+GAME_AREA = CONFIG['game_area']
+BUTTON_TEMPLATES = CONFIG['button_templates']
+SETTINGS = CONFIG['settings']
+
+# Convert click_pos dari list ke tuple untuk kompatibilitas
+for name, config in BUTTON_TEMPLATES.items():
+    if isinstance(config['click_pos'], list):
+        config['click_pos'] = tuple(config['click_pos'])
+
+# Load settings
+CHOOSE_EVENT_TIMEOUT = SETTINGS.get('choose_event_timeout', 70)
+ESC_PRESS_INTERVAL = SETTINGS.get('esc_press_interval', 15)
+EVENT_MENU_CLICK_THRESHOLD = SETTINGS.get('event_menu_click_threshold', 3)
+LEAVE_GAME_ESC_THRESHOLD = SETTINGS.get('leave_game_esc_threshold', 3)
+DETECTION_THRESHOLD = SETTINGS.get('detection_threshold', 0.8)
  
 sct = mss()
 
@@ -99,10 +100,14 @@ class ButtonDetector:
                     continue
                 
                 template = cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+                # Convert click_pos ke tuple jika masih list
+                click_pos = config['click_pos']
+                if isinstance(click_pos, list):
+                    click_pos = tuple(click_pos)
                 self.templates[name] = {
                     "template": template,
-                    "click_pos": config['click_pos'],
-                    "threshold": 0.8,
+                    "click_pos": click_pos,
+                    "threshold": DETECTION_THRESHOLD,
                     "color": (np.random.randint(0, 255), 
                              np.random.randint(0, 255), 
                              np.random.randint(0, 255))  # Warna unik untuk setiap tombol
